@@ -3,7 +3,9 @@
 <head>
   <meta charset="utf-8" />
   <title>AIxCel – AI Supercharged Spreadsheet</title>
-  <!-- Luckysheet styles -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- Luckysheet CSS -->
   <link
     rel="stylesheet"
     href="https://cdn.jsdelivr.net/npm/luckysheet/dist/plugins/css/pluginsCss.css"
@@ -30,11 +32,9 @@
       --primary-color: #4285f4;
       --shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     }
-    * { box-sizing: border-box; }
+    *, *::before, *::after { box-sizing: border-box; }
     body {
-      margin: 0;
-      padding: 0;
-      height: 100vh;
+      margin: 0; padding: 0; height: 100vh;
       font-family: 'Segoe UI', Roboto, sans-serif;
       display: grid;
       grid-template-columns: var(--golden-ratio) calc(100% - var(--golden-ratio));
@@ -43,8 +43,7 @@
     .spreadsheet-container {
       background: var(--spreadsheet-bg);
       padding: 20px;
-      display: flex;
-      flex-direction: column;
+      display: flex; flex-direction: column;
       height: 100vh;
       box-shadow: var(--shadow);
     }
@@ -54,7 +53,7 @@
       font-size: 1.5rem;
       font-weight: 600;
     }
-    /* This is your Luckysheet canvas */
+    /* THIS is where Luckysheet will render */
     #luckysheet {
       flex-grow: 1;
       border-radius: 8px;
@@ -67,8 +66,7 @@
     .tools-panel {
       background: var(--tools-bg);
       padding: 20px;
-      display: flex;
-      flex-direction: column;
+      display: flex; flex-direction: column;
       height: 100vh;
       border-left: 1px solid var(--border-color);
     }
@@ -87,19 +85,16 @@
       border: 1px solid var(--border-color);
       overflow-y: auto;
     }
-
-    /* Updater & tracker styles */
+    /* Updater & tracker */
     .cell-updater, .cell-tracker {
-      padding: 15px;
-      margin-bottom: 20px;
-      background: #f5f5f5;
-      border-radius: 8px;
+      padding: 15px; margin-bottom: 20px;
+      background: #f5f5f5; border-radius: 8px;
     }
     .input-group { margin-bottom: 15px; }
     label { display: block; margin-bottom: 5px; font-weight: 500; }
     input, textarea {
-      width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;
-      background: white;
+      width: 100%; padding: 8px; border: 1px solid #ddd;
+      border-radius: 4px; background: white;
     }
     textarea { min-height: 80px; }
     button {
@@ -108,7 +103,8 @@
     }
     button:hover { background: #3367d6; }
     .tracker-display {
-      padding: 10px; background: white; border: 1px solid #ddd; border-radius: 4px;
+      padding: 10px; background: white;
+      border: 1px solid #ddd; border-radius: 4px;
     }
   </style>
 </head>
@@ -128,7 +124,7 @@
         <h3>Manual Cell Update</h3>
         <div class="input-group">
           <label for="cell-ref">Cell Reference:</label>
-          <input type="text" id="cell-ref" placeholder="e.g. B2">
+          <input type="text" id="cell-ref" placeholder="e.g. B2" />
         </div>
         <div class="input-group">
           <label for="cell-value">Value:</label>
@@ -148,38 +144,44 @@
     </div>
   </div>
 
-  <!-- Luckysheet script -->
+  <!-- Luckysheet JS (plugin first!) -->
+  <script src="https://cdn.jsdelivr.net/npm/luckysheet/dist/plugins/js/plugin.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/luckysheet/dist/luckysheet.umd.js"></script>
   <script>
-    // Initialize Luckysheet
-    luckysheet.create({
-      container: 'luckysheet',
-      lang: 'en',
-      data: [{
-        name: "Sheet1",
-        color: "",
-        status: "1",
-        order: 0,
-        data: {}
-      }],
-      title: "AIxCel"
-    });
+    document.addEventListener('DOMContentLoaded', () => {
+      // 1. Initialise Luckysheet
+      luckysheet.create({
+        container: 'luckysheet',
+        lang: 'en',
+        data: [{
+          name: "Sheet1",
+          color: "",
+          status: "1",
+          order: 0,
+          data: {}
+        }],
+        title: "AIxCel"
+      });
 
-    // Manual Update Handler
-    document.getElementById('update-cell').onclick = () => {
-      const ref = document.getElementById('cell-ref').value.trim();
-      const val = document.getElementById('cell-value').value;
-      if (!ref) return alert('Please enter a cell reference.');
-      luckysheet.setCellValue({ cell: ref, value: val });
-      document.getElementById('update-status').textContent = `Updated ${ref}`;
-    };
+      // 2. Manual Update Handler
+      document
+        .getElementById('update-cell')
+        .addEventListener('click', () => {
+          const ref = document.getElementById('cell-ref').value.trim();
+          const val = document.getElementById('cell-value').value;
+          if (!ref) return alert('Please enter a cell reference.');
+          luckysheet.setCellValue({ cell: ref, value: val });
+          document.getElementById('update-status').textContent =
+            `Updated ${ref}`;
+        });
 
-    // Track selection changes
-    luckysheet.on('cellSelect', ({ row, col }) => {
-      const cellRef = luckysheet.getRCName({ row, col });
-      const value   = luckysheet.getCellValue({ row, col }) || '';
-      document.getElementById('cell-id').textContent = cellRef;
-      document.getElementById('cell-content').textContent = value;
+      // 3. Track selection changes
+      luckysheet.on('cellSelect', ({ row, col }) => {
+        const cellRef = luckysheet.getRCName({ row, col });
+        const value   = luckysheet.getCellValue({ row, col }) || '';
+        document.getElementById('cell-id').textContent    = cellRef;
+        document.getElementById('cell-content').textContent = value;
+      });
     });
   </script>
 </body>
