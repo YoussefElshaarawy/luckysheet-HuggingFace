@@ -1,188 +1,22 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <title>AIxCel – AI Supercharged Spreadsheet</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" href="/favicon.ico" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Luckysheet-Vue3-Vite Demo</title>
 
-  <!-- Luckysheet CSS -->
-  <link
-    rel="stylesheet"
-    href="https://cdn.jsdelivr.net/npm/luckysheet/dist/plugins/css/pluginsCss.css"
-  />
-  <link
-    rel="stylesheet"
-    href="https://cdn.jsdelivr.net/npm/luckysheet/dist/plugins/plugins.css"
-  />
-  <link
-    rel="stylesheet"
-    href="https://cdn.jsdelivr.net/npm/luckysheet/dist/css/luckysheet.css"
-  />
-  <link
-    rel="stylesheet"
-    href="https://cdn.jsdelivr.net/npm/luckysheet/dist/assets/iconfont/iconfont.css"
-  />
-
-  <style>
-    :root {
-      --golden-ratio: 61.8%;
-      --spreadsheet-bg: #f8f9fa;
-      --tools-bg: #ffffff;
-      --border-color: #e0e0e0;
-      --primary-color: #4285f4;
-      --shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    }
-    *, *::before, *::after { box-sizing: border-box; }
-    body {
-      margin: 0; padding: 0; height: 100vh;
-      font-family: 'Segoe UI', Roboto, sans-serif;
-      display: grid;
-      grid-template-columns: var(--golden-ratio) calc(100% - var(--golden-ratio));
-      overflow: hidden;
-    }
-    .spreadsheet-container {
-      background: var(--spreadsheet-bg);
-      padding: 20px;
-      display: flex; flex-direction: column;
-      height: 100vh;
-      box-shadow: var(--shadow);
-    }
-    .spreadsheet-header {
-      margin-bottom: 15px;
-      color: var(--primary-color);
-      font-size: 1.5rem;
-      font-weight: 600;
-    }
-    /* THIS is where Luckysheet will render */
-    #luckysheet {
-      flex-grow: 1;
-      border-radius: 8px;
-      border: 1px solid var(--border-color);
-      box-shadow: var(--shadow);
-      background: white;
-      overflow: hidden;
-    }
-
-    .tools-panel {
-      background: var(--tools-bg);
-      padding: 20px;
-      display: flex; flex-direction: column;
-      height: 100vh;
-      border-left: 1px solid var(--border-color);
-    }
-    .tools-header {
-      color: var(--primary-color);
-      font-size: 1.5rem;
-      font-weight: 600;
-      margin-bottom: 20px;
-    }
-    .tools-content {
-      flex-grow: 1;
-      background: white;
-      border-radius: 8px;
-      padding: 15px;
-      box-shadow: var(--shadow);
-      border: 1px solid var(--border-color);
-      overflow-y: auto;
-    }
-    /* Updater & tracker */
-    .cell-updater, .cell-tracker {
-      padding: 15px; margin-bottom: 20px;
-      background: #f5f5f5; border-radius: 8px;
-    }
-    .input-group { margin-bottom: 15px; }
-    label { display: block; margin-bottom: 5px; font-weight: 500; }
-    input, textarea {
-      width: 100%; padding: 8px; border: 1px solid #ddd;
-      border-radius: 4px; background: white;
-    }
-    textarea { min-height: 80px; }
-    button {
-      background: var(--primary-color); color: white; border: none;
-      padding: 10px 15px; border-radius: 4px; cursor: pointer;
-    }
-    button:hover { background: #3367d6; }
-    .tracker-display {
-      padding: 10px; background: white;
-      border: 1px solid #ddd; border-radius: 4px;
-    }
-  </style>
-</head>
-<body>
-
-  <!-- LEFT PANEL: Luckysheet -->
-  <div class="spreadsheet-container">
-    <div class="spreadsheet-header">AIxCel Spreadsheet</div>
-    <div id="luckysheet"></div>
-  </div>
-
-  <!-- RIGHT PANEL: AI Tools -->
-  <div class="tools-panel">
-    <div class="tools-header">AI Tools</div>
-    <div class="tools-content">
-      <div class="cell-updater">
-        <h3>Manual Cell Update</h3>
-        <div class="input-group">
-          <label for="cell-ref">Cell Reference:</label>
-          <input type="text" id="cell-ref" placeholder="e.g. B2" />
-        </div>
-        <div class="input-group">
-          <label for="cell-value">Value:</label>
-          <textarea id="cell-value" placeholder="Enter content"></textarea>
-        </div>
-        <button id="update-cell">Update Cell</button>
-        <div id="update-status"></div>
-      </div>
-
-      <div class="cell-tracker">
-        <h3>Cell Tracker</h3>
-        <div class="tracker-display">
-          <p>Selected Cell: <span id="cell-id">None</span></p>
-          <p>Content: <span id="cell-content">Click a cell to view</span></p>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Luckysheet JS (plugin first!) -->
-  <script src="https://cdn.jsdelivr.net/npm/luckysheet/dist/plugins/js/plugin.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/luckysheet/dist/luckysheet.umd.js"></script>
-  <script>
-    document.addEventListener('DOMContentLoaded', () => {
-      // 1. Initialise Luckysheet
-      luckysheet.create({
-        container: 'luckysheet',
-        lang: 'en',
-        data: [{
-          name: "Sheet1",
-          color: "",
-          status: "1",
-          order: 0,
-          data: {}
-        }],
-        title: "AIxCel"
-      });
-
-      // 2. Manual Update Handler
-      document
-        .getElementById('update-cell')
-        .addEventListener('click', () => {
-          const ref = document.getElementById('cell-ref').value.trim();
-          const val = document.getElementById('cell-value').value;
-          if (!ref) return alert('Please enter a cell reference.');
-          luckysheet.setCellValue({ cell: ref, value: val });
-          document.getElementById('update-status').textContent =
-            `Updated ${ref}`;
-        });
-
-      // 3. Track selection changes
-      luckysheet.on('cellSelect', ({ row, col }) => {
-        const cellRef = luckysheet.getRCName({ row, col });
-        const value   = luckysheet.getCellValue({ row, col }) || '';
-        document.getElementById('cell-id').textContent    = cellRef;
-        document.getElementById('cell-content').textContent = value;
-      });
-    });
-  </script>
-</body>
+    <!-- globally import the style files and js files of luckysheet at here  -->
+    <!-- 在这里全局引入luckysheet的样式文件和js文件  -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/luckysheet/dist/plugins/css/pluginsCss.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/luckysheet/dist/plugins/plugins.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/luckysheet/dist/css/luckysheet.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/luckysheet/dist/assets/iconfont/iconfont.css" />
+    <script src="https://cdn.jsdelivr.net/npm/luckysheet/dist/plugins/js/plugin.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/luckysheet/dist/luckysheet.umd.js"></script>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
 </html>
