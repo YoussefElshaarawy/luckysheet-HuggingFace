@@ -144,94 +144,77 @@
   
   <!-- AI Integration Script -->
   <script src="https://cdn.jsdelivr.net/npm/@xenova/transformers@2.4.0/dist/transformers.min.js"></script>
-  <script>
-    document.addEventListener('DOMContentLoaded', async () => {
-      // 1. Initialize Luckysheet
-      luckysheet.create({
-        container: 'luckysheet',
-        lang: 'en',
-        data: [{
-          name: "Sheet1",
-          color: "",
-          status: "1",
-          order: 0,
-          data: {}
-        }],
-        title: "AIxCel"
+ <script>
+document.addEventListener('DOMContentLoaded', async () => {
+  // 1️⃣ First, point the library at its WASM support files (needed for WebGPU)
+  await transformers.setWasmPath(
+    'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.4.0/dist/wasm'
+  );
+  // 2️⃣ Then tell it to use WebGPU
+  await transformers.setBackend('webgpu');
+  // 3️⃣ Now you can safely create the pipeline
+  document.getElementById('load-model').addEventListener('click', async () => {
+    const loadBtn     = document.getElementById('load-model');
+    const progressBar = document.getElementById('model-progress');
+    const statusEl    = document.getElementById('model-status');
+
+    loadBtn.disabled = true;
+    statusEl.textContent = 'Initializing WebGPU…';
+
+    try {
+      // 4️⃣ Build your text-generation pipeline.  Note that
+      //    we pass a *string* prompt, not an array of messages.
+      statusEl.textContent = 'Downloading weights…';
+      const generator = await transformers.pipeline(
+        'text-generation',
+        'HuggingFaceTB/SmolLM2-1.7B-Instruct',
+        {
+          // this callback drives your progress bar
+          progress_callback: (p) => {
+            const pct = Math.round(p * 100);
+            progressBar.style.width   = pct + '%';
+            statusEl.textContent      = `Loading model… ${pct}%`;
+          }
+        }
+      );
+
+      window.AIgenerator = generator;
+      statusEl.textContent      = 'Model loaded!';
+      loadBtn.textContent       = '✅ Loaded';
+
+      // 5️⃣ Register your custom =AI(...) formula
+      luckysheet.setCellFunction('AI', (prompt, range) => {
+        return generator(prompt, { max_new_tokens: 128 })
+          .then(result => {
+            // result is an array, take the full generated_text
+            return result[0].generated_text;
+          });
       });
 
-      // 2. AI Model Loading
-      document.getElementById('load-model').addEventListener('click', async () => {
-        const loadBtn = document.getElementById('load-model');
-        const progressBar = document.getElementById('model-progress');
-        const statusEl = document.getElementById('model-status');
-        
-        loadBtn.disabled = true;
-        statusEl.textContent = "Initializing WebGPU...";
-        
-        try {
-          // Load the model
-          const { pipeline } = transformers;
-          const generator = await pipeline(
-            "text-generation",
-            "HuggingFaceTB/SmolLM2-1.7B-Instruct",
-            {
-              progress_callback: (progress) => {
-                const percent = Math.round(progress * 100);
-                progressBar.style.width = `${percent}%`;
-                statusEl.textContent = `Loading model... ${percent}%`;
-              }
-            }
-          );
-          
-          // Store the generator globally
-          window.AIgenerator = generator;
-          
-          statusEl.textContent = "Model loaded and ready!";
-          loadBtn.textContent = "Model Loaded";
-          
-          // Register custom formula
-          luckysheet.setCellFunction('AI', (prompt, range) => {
-            const cells = luckysheet.getRangeValue(range);
-            const messages = [
-              { role: "system", content: "You are a spreadsheet AI assistant." },
-              { role: "user", content: prompt }
-            ];
-            
-            return generator(messages, { 
-              max_new_tokens: 128 
-            }).then(output => {
-              return output[0].generated_text.at(-1).content;
-            });
-          });
+      // 6️⃣ Hook up your chat UI
+      document.getElementById('ask-ai').addEventListener('click', async () => {
+        const prompt  = document.getElementById('ai-prompt').value.trim();
+        const output  = document.getElementById('ai-output');
+        if (!prompt) return;
+        output.textContent = '🤔 Thinking…';
 
-          // Add chat interface functionality
-          document.getElementById('ask-ai').addEventListener('click', async () => {
-            const prompt = document.getElementById('ai-prompt').value;
-            if (!prompt) return;
-            
-            const outputEl = document.getElementById('ai-output');
-            outputEl.textContent = "Thinking...";
-            
-            try {
-              const response = await window.AIgenerator([{
-                role: "user",
-                content: prompt
-              }], { max_new_tokens: 256 });
-              
-              outputEl.textContent = response[0].generated_text.at(-1).content;
-            } catch (error) {
-              outputEl.textContent = `Error: ${error.message}`;
-            }
-          });
-          
-        } catch (error) {
-          statusEl.textContent = `Error: ${error.message}`;
-          loadBtn.disabled = false;
-          loadBtn.textContent = "Retry Loading";
+        try {
+          const [res] = await generator(prompt, { max_new_tokens: 256 });
+          output.textContent = res.generated_text;
+        } catch (err) {
+          output.textContent = `Error: ${err.message}`;
         }
       });
-    });
-  </script>
+
+    } catch (err) {
+      statusEl.textContent      = `❌ ${err.message}`;
+      loadBtn.disabled          = false;
+      loadBtn.textContent       = 'Retry Load';
+      console.error(err);
+    }
+  });
+});
+</script>
+
 </body>
 </html>
