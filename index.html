@@ -5,12 +5,13 @@
   <title>AIxCel – AI Supercharged Spreadsheet</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-  <!-- Luckysheet CSS -->
+  <!-- 1) Luckysheet CSS -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/luckysheet/dist/plugins/css/pluginsCss.css" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/luckysheet/dist/plugins/plugins.css" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/luckysheet/dist/css/luckysheet.css" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/luckysheet/dist/assets/iconfont/iconfont.css" />
 
+  <!-- 2) Your custom styles -->
   <style>
     :root {
       --golden-ratio: 61.8%;
@@ -49,7 +50,6 @@
       background: white;
       overflow: hidden;
     }
-
     .tools-panel {
       background: var(--tools-bg);
       padding: 20px;
@@ -72,156 +72,164 @@
       border: 1px solid var(--border-color);
       overflow-y: auto;
     }
-    .ai-loader {
-      padding: 15px; margin-bottom: 20px;
-      background: #f5f5f5; border-radius: 8px;
+    .ai-loader, .ai-chat {
+      margin-bottom: 20px;
+      background: #f5f5f5;
+      padding: 15px;
+      border-radius: 8px;
     }
     .input-group { margin-bottom: 15px; }
     label { display: block; margin-bottom: 5px; font-weight: 500; }
-    input, textarea {
-      width: 100%; padding: 8px; border: 1px solid #ddd;
-      border-radius: 4px; background: white;
+    textarea, input {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      background: white;
+      font-family: inherit;
     }
-    textarea { min-height: 80px; }
     button {
-      background: var(--primary-color); color: white; border: none;
-      padding: 10px 15px; border-radius: 4px; cursor: pointer;
+      background: var(--primary-color);
+      color: white;
+      border: none;
+      padding: 10px 15px;
+      border-radius: 4px;
+      cursor: pointer;
     }
     button:hover { background: #3367d6; }
     .progress-container {
-      width: 100%; background-color: #e0e0e0; border-radius: 4px;
+      width: 100%;
+      background-color: #e0e0e0;
+      border-radius: 4px;
       margin: 10px 0;
     }
     .progress-bar {
-      height: 20px; background-color: #4CAF50; border-radius: 4px;
-      width: 0%; transition: width 0.3s;
+      height: 20px;
+      background-color: #4CAF50;
+      border-radius: 4px;
+      width: 0%;
+      transition: width 0.3s;
     }
-    .ai-response { margin-top: 20px; }
   </style>
 </head>
 <body>
 
-  <!-- LEFT PANEL: Luckysheet -->
+  <!-- LEFT PANEL -->
   <div class="spreadsheet-container">
     <div class="spreadsheet-header">AIxCel Spreadsheet</div>
     <div id="luckysheet"></div>
   </div>
 
-  <!-- RIGHT PANEL: AI Tools -->
+  <!-- RIGHT PANEL -->
   <div class="tools-panel">
     <div class="tools-header">AI Tools</div>
     <div class="tools-content">
-
-      <!-- Model Loader -->
       <div class="ai-loader">
         <h3>AI Model Loader</h3>
         <button id="load-model">Load AI Model</button>
         <div class="progress-container">
-          <div class="progress-bar" id="model-progress"></div>
+          <div id="model-progress" class="progress-bar"></div>
         </div>
         <div id="model-status">Ready to load model</div>
       </div>
-
-      <!-- Chat Interface -->
       <div class="ai-chat">
         <h3>AI Chat Interface</h3>
         <div class="input-group">
           <label for="ai-prompt">Enter your prompt:</label>
-          <textarea id="ai-prompt" placeholder="Ask the AI anything..."></textarea>
+          <textarea id="ai-prompt" placeholder="Ask the AI anything…"></textarea>
         </div>
         <button id="ask-ai">Ask AI</button>
         <div class="ai-response">
           <h4>AI Response:</h4>
-          <div id="ai-output" class="response-content"></div>
+          <div id="ai-output"></div>
         </div>
       </div>
-
     </div>
   </div>
 
-  <!-- Luckysheet JS (plugin first!) -->
+  <!-- 3) Luckysheet JS -->
   <script src="https://cdn.jsdelivr.net/npm/luckysheet/dist/plugins/js/plugin.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/luckysheet/dist/luckysheet.umd.js"></script>
 
-  <!-- Transformers.js as ES module -->
-  <script type="module">
-    import { env, pipeline } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.4.0/dist/esm/index.js';
+  <!-- 4) Transformers & explicit WASM URL -->
+  <script src="https://cdn.jsdelivr.net/npm/@xenova/transformers@2.4.0/dist/transformers.min.js"></script>
+  <script>
+    // point to the hosted .wasm so it can load in-browser
+    transformers.env.wasm = 
+      'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.4.0/dist/transformers.wasm';
+  </script>
 
-    document.addEventListener('DOMContentLoaded', () => {
+  <!-- 5) Your App Logic -->
+  <script>
+    document.addEventListener('DOMContentLoaded', async () => {
       // Initialize Luckysheet
       luckysheet.create({
         container: 'luckysheet',
         lang: 'en',
-        data: [{
-          name: "Sheet1",
-          color: "",
-          status: "1",
-          order: 0,
-          data: {}
-        }],
+        data: [{ name: "Sheet1", color: "", status: "1", order: 0, data: {} }],
         title: "AIxCel"
       });
 
-      // Point env.wasm to the CDN for WebGPU
-      env.wasm = 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.4.0/dist/transformers.wasm';
-
-      const loadBtn = document.getElementById('load-model');
-      const progressBar = document.getElementById('model-progress');
-      const statusEl = document.getElementById('model-status');
-
-      loadBtn.addEventListener('click', async () => {
-        loadBtn.disabled = true;
-        statusEl.textContent = 'Initializing WebGPU…';
+      // Load Model
+      document.getElementById('load-model').addEventListener('click', async () => {
+        const btn = document.getElementById('load-model');
+        const bar = document.getElementById('model-progress');
+        const status = document.getElementById('model-status');
+        btn.disabled = true;
+        status.textContent = 'Initializing WebGPU…';
 
         try {
-          // Load text-generation pipeline
+          const { pipeline } = transformers;
           const generator = await pipeline(
             'text-generation',
             'HuggingFaceTB/SmolLM2-1.7B-Instruct',
             {
-              progress_callback: (p) => {
+              progress_callback: p => {
                 const pct = Math.round(p * 100);
-                progressBar.style.width = pct + '%';
-                statusEl.textContent = `Loading model… ${pct}%`;
+                bar.style.width = pct + '%';
+                status.textContent = `Loading model… ${pct}%`;
+                console.log('model load progress:', pct);
               }
             }
           );
 
           window.AIgenerator = generator;
-          statusEl.textContent = 'Model loaded and ready!';
-          loadBtn.textContent = 'Model Loaded';
+          status.textContent = 'Model loaded!';
+          btn.textContent = 'Loaded';
 
-          // Custom Luckysheet formula: =AI("prompt", "A1:B2")
+          // custom formula (optional)
           luckysheet.setCellFunction('AI', (prompt, range) => {
-            const messages = [
-              { role: 'system', content: 'You are a spreadsheet AI assistant.' },
-              { role: 'user', content: prompt }
-            ];
-            return generator(messages, { max_new_tokens: 128 })
-              .then(out => out[0].generated_text);
-          });
-
-          // Chat button handler
-          document.getElementById('ask-ai').addEventListener('click', async () => {
-            const prompt = document.getElementById('ai-prompt').value;
-            if (!prompt) return;
-            const outEl = document.getElementById('ai-output');
-            outEl.textContent = 'Thinking…';
-            try {
-              const resp = await window.AIgenerator(
-                [{ role: 'user', content: prompt }],
-                { max_new_tokens: 256 }
-              );
-              outEl.textContent = resp[0].generated_text;
-            } catch (err) {
-              outEl.textContent = 'Error: ' + err.message;
-            }
+            return window.AIgenerator(
+              [
+                { role: 'system', content: 'You are a spreadsheet assistant.' },
+                { role: 'user', content: prompt }
+              ],
+              { max_new_tokens: 128 }
+            ).then(res => res[0].generated_text);
           });
 
         } catch (err) {
-          statusEl.textContent = 'Error: ' + err.message;
-          loadBtn.disabled = false;
-          loadBtn.textContent = 'Retry Loading';
+          console.error(err);
+          status.textContent = 'Error: ' + err.message;
+          btn.disabled = false;
+          btn.textContent = 'Retry';
+        }
+      });
+
+      // Chat UI
+      document.getElementById('ask-ai').addEventListener('click', async () => {
+        const prompt = document.getElementById('ai-prompt').value;
+        if (!prompt || !window.AIgenerator) return;
+        const out = document.getElementById('ai-output');
+        out.textContent = 'Thinking…';
+        try {
+          const resp = await window.AIgenerator(
+            [{ role: 'user', content: prompt }],
+            { max_new_tokens: 256 }
+          );
+          out.textContent = resp[0].generated_text;
+        } catch (e) {
+          out.textContent = 'Error: ' + e.message;
         }
       });
     });
