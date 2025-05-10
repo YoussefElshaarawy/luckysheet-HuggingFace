@@ -72,7 +72,7 @@
       border: 1px solid var(--border-color);
       overflow-y: auto;
     }
-    .cell-updater, .cell-tracker, .ai-loader {
+    .ai-loader {
       padding: 15px; margin-bottom: 20px;
       background: #f5f5f5; border-radius: 8px;
     }
@@ -88,10 +88,6 @@
       padding: 10px 15px; border-radius: 4px; cursor: pointer;
     }
     button:hover { background: #3367d6; }
-    .tracker-display {
-      padding: 10px; background: white;
-      border: 1px solid #ddd; border-radius: 4px;
-    }
     .progress-container {
       width: 100%; background-color: #e0e0e0; border-radius: 4px;
       margin: 10px 0;
@@ -100,6 +96,7 @@
       height: 20px; background-color: #4CAF50; border-radius: 4px;
       width: 0%; transition: width 0.3s;
     }
+    .ai-response { margin-top: 20px; }
   </style>
 </head>
 <body>
@@ -114,6 +111,8 @@
   <div class="tools-panel">
     <div class="tools-header">AI Tools</div>
     <div class="tools-content">
+
+      <!-- Model Loader -->
       <div class="ai-loader">
         <h3>AI Model Loader</h3>
         <button id="load-model">Load AI Model</button>
@@ -123,6 +122,7 @@
         <div id="model-status">Ready to load model</div>
       </div>
 
+      <!-- Chat Interface -->
       <div class="ai-chat">
         <h3>AI Chat Interface</h3>
         <div class="input-group">
@@ -135,18 +135,20 @@
           <div id="ai-output" class="response-content"></div>
         </div>
       </div>
+
     </div>
   </div>
 
   <!-- Luckysheet JS (plugin first!) -->
   <script src="https://cdn.jsdelivr.net/npm/luckysheet/dist/plugins/js/plugin.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/luckysheet/dist/luckysheet.umd.js"></script>
-  
-  <!-- AI Integration Script -->
-  <script src="https://cdn.jsdelivr.net/npm/@xenova/transformers@2.4.0/dist/transformers.min.js"></script>
-  <script>
-    document.addEventListener('DOMContentLoaded', async () => {
-      // 1. Initialize Luckysheet
+
+  <!-- Transformers.js as ES module -->
+  <script type="module">
+    import { env, pipeline } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.4.0/dist/esm/index.js';
+
+    document.addEventListener('DOMContentLoaded', () => {
+      // Initialize Luckysheet
       luckysheet.create({
         container: 'luckysheet',
         lang: 'en',
@@ -160,75 +162,66 @@
         title: "AIxCel"
       });
 
-      // 2. AI Model Loading
-      document.getElementById('load-model').addEventListener('click', async () => {
-        const loadBtn = document.getElementById('load-model');
-        const progressBar = document.getElementById('model-progress');
-        const statusEl = document.getElementById('model-status');
-        
+      // Point env.wasm to the CDN for WebGPU
+      env.wasm = 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.4.0/dist/transformers.wasm';
+
+      const loadBtn = document.getElementById('load-model');
+      const progressBar = document.getElementById('model-progress');
+      const statusEl = document.getElementById('model-status');
+
+      loadBtn.addEventListener('click', async () => {
         loadBtn.disabled = true;
-        statusEl.textContent = "Initializing WebGPU...";
-        
+        statusEl.textContent = 'Initializing WebGPU…';
+
         try {
-          // Load the model
-          const { pipeline } = transformers;
+          // Load text-generation pipeline
           const generator = await pipeline(
-            "text-generation",
-            "HuggingFaceTB/SmolLM2-1.7B-Instruct",
+            'text-generation',
+            'HuggingFaceTB/SmolLM2-1.7B-Instruct',
             {
-              progress_callback: (progress) => {
-                const percent = Math.round(progress * 100);
-                progressBar.style.width = `${percent}%`;
-                statusEl.textContent = `Loading model... ${percent}%`;
+              progress_callback: (p) => {
+                const pct = Math.round(p * 100);
+                progressBar.style.width = pct + '%';
+                statusEl.textContent = `Loading model… ${pct}%`;
               }
             }
           );
-          
-          // Store the generator globally
+
           window.AIgenerator = generator;
-          
-          statusEl.textContent = "Model loaded and ready!";
-          loadBtn.textContent = "Model Loaded";
-          
-          // Register custom formula
+          statusEl.textContent = 'Model loaded and ready!';
+          loadBtn.textContent = 'Model Loaded';
+
+          // Custom Luckysheet formula: =AI("prompt", "A1:B2")
           luckysheet.setCellFunction('AI', (prompt, range) => {
-            const cells = luckysheet.getRangeValue(range);
             const messages = [
-              { role: "system", content: "You are a spreadsheet AI assistant." },
-              { role: "user", content: prompt }
+              { role: 'system', content: 'You are a spreadsheet AI assistant.' },
+              { role: 'user', content: prompt }
             ];
-            
-            return generator(messages, { 
-              max_new_tokens: 128 
-            }).then(output => {
-              return output[0].generated_text.at(-1).content;
-            });
+            return generator(messages, { max_new_tokens: 128 })
+              .then(out => out[0].generated_text);
           });
 
-          // Add chat interface functionality
+          // Chat button handler
           document.getElementById('ask-ai').addEventListener('click', async () => {
             const prompt = document.getElementById('ai-prompt').value;
             if (!prompt) return;
-            
-            const outputEl = document.getElementById('ai-output');
-            outputEl.textContent = "Thinking...";
-            
+            const outEl = document.getElementById('ai-output');
+            outEl.textContent = 'Thinking…';
             try {
-              const response = await window.AIgenerator([{
-                role: "user",
-                content: prompt
-              }], { max_new_tokens: 256 });
-              
-              outputEl.textContent = response[0].generated_text.at(-1).content;
-            } catch (error) {
-              outputEl.textContent = `Error: ${error.message}`;
+              const resp = await window.AIgenerator(
+                [{ role: 'user', content: prompt }],
+                { max_new_tokens: 256 }
+              );
+              outEl.textContent = resp[0].generated_text;
+            } catch (err) {
+              outEl.textContent = 'Error: ' + err.message;
             }
           });
-          
-        } catch (error) {
-          statusEl.textContent = `Error: ${error.message}`;
+
+        } catch (err) {
+          statusEl.textContent = 'Error: ' + err.message;
           loadBtn.disabled = false;
-          loadBtn.textContent = "Retry Loading";
+          loadBtn.textContent = 'Retry Loading';
         }
       });
     });
